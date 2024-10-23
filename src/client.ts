@@ -1,3 +1,5 @@
+// ClobClient.ts
+
 import { Wallet } from "@ethersproject/wallet";
 import { JsonRpcSigner } from "@ethersproject/providers";
 import { SignatureType, SignedOrder } from "@polymarket/order-utils";
@@ -43,13 +45,10 @@ import {
 } from "./types";
 import { createL1Headers, createL2Headers } from "./headers";
 import {
-    del,
     DELETE,
     GET,
-    get,
     parseDropNotificationParams,
     POST,
-    post,
     RequestOptions,
 } from "./http-helpers";
 import { L1_AUTH_UNAVAILABLE_ERROR, L2_AUTH_NOT_AVAILABLE } from "./errors";
@@ -108,6 +107,7 @@ import {
 import { OrderBuilder } from "./order-builder/builder";
 import { END_CURSOR, INITIAL_CURSOR } from "./constants";
 import { calculateMarketPrice } from "./order-builder/helpers";
+import axios, { AxiosInstance } from 'axios'; // Добавлен импорт axios
 
 export class ClobClient {
     readonly host: string;
@@ -130,6 +130,8 @@ export class ClobClient {
 
     readonly useServerTime?: boolean;
 
+    private axiosInstance: AxiosInstance; // Добавлено поле для axiosInstance
+
     // eslint-disable-next-line max-params
     constructor(
         host: string,
@@ -140,6 +142,7 @@ export class ClobClient {
         funderAddress?: string,
         geoBlockToken?: string,
         useServerTime?: boolean,
+        axiosInstance?: AxiosInstance // Добавлен параметр axiosInstance
     ) {
         this.host = host.endsWith("/") ? host.slice(0, -1) : host;
         this.chainId = chainId;
@@ -160,6 +163,8 @@ export class ClobClient {
         this.negRisk = {};
         this.geoBlockToken = geoBlockToken;
         this.useServerTime = useServerTime;
+
+        this.axiosInstance = axiosInstance || axios.create(); // Инициализация axiosInstance
     }
 
     // Public endpoints
@@ -996,25 +1001,34 @@ export class ClobClient {
         return tickSize;
     }
 
-    // http methods
-    private async get(endpoint: string, options?: RequestOptions) {
-        return get(endpoint, {
+    protected async get(endpoint: string, options?: RequestOptions) {
+        // Используем this.axiosInstance вместо глобальной функции get
+        const response = await this.axiosInstance.get(endpoint, {
             ...options,
             params: { ...options?.params, geo_block_token: this.geoBlockToken },
+            headers: options?.headers,
         });
+        return response.data;
     }
 
-    private async post(endpoint: string, options?: RequestOptions) {
-        return post(endpoint, {
+    protected async post(endpoint: string, options?: RequestOptions) {
+        // Используем this.axiosInstance вместо глобальной функции post
+        const response = await this.axiosInstance.post(endpoint, options?.data, {
             ...options,
             params: { ...options?.params, geo_block_token: this.geoBlockToken },
+            headers: options?.headers,
         });
+        return response.data;
     }
 
-    private async del(endpoint: string, options?: RequestOptions) {
-        return del(endpoint, {
+    protected async del(endpoint: string, options?: RequestOptions) {
+        // Используем this.axiosInstance вместо глобальной функции del
+        const response = await this.axiosInstance.delete(endpoint, {
             ...options,
             params: { ...options?.params, geo_block_token: this.geoBlockToken },
+            headers: options?.headers,
+            data: options?.data, // В delete запросах axios принимает data в конфиге
         });
+        return response.data;
     }
 }
